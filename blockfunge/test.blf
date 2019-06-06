@@ -1,0 +1,108 @@
+
+     @stdlib
+       v
+       /\
+       \/
+
+        add[2]
+         v
+       /-----\
+       |  +  |   Silly minimal function, simply adds its arguments
+       \-----/
+
+                           #type[1]
+                              v
+       main               /--------------------\
+         v                | var1=    var2  v   |
+    /-----------\         |         3rav   <   |
+    |1 2 v      |         |--------------------|
+    |    > add* |         | getVar1    meth2   |
+    |           |         |    v         v     |
+    |           |         | /-----\   /-------\|
+    |           |         | |var1 |   |       ||
+    \-----------/         | \-----/   |       ||
+                          |           \-------/|
+                          \--------------------/
+
+
+General Principles:
+    Blocks form sets of code
+    Anything outside a block that isn't a name is a comment (This is a valid program)
+    Pointer starts at the top left, moving right
+    Any character or number is read into the token buffer
+    Any non char or number pushes the token buffer onto the token stack
+    Operations pop from the token stack
+
+Blocks:
+    Blocks must have a string with an arrow pointing towards the block defining a name
+    Bare names define a function
+    Names prefixed with # define a type
+    Type block contain two sections
+        Top section which is once every construction as a function, and becomes the type variables
+        Bottom section which is evaluated as a file once and becomes the methods
+    Names prefixed with @ define an extern/import, they still must point to a block
+    Argument count is defined by a number inside of brackets, that many values will be evaluated from the input stack into the function's stack
+    Return value is the top of the stack
+
+Token Rules:
+    Tokens are pushed to the stack with no regard for type
+    Operators evaluate tokens as they need to, on whichever internal table they need to. Functions may or may not be first-order
+
+Operators:
+    Conditional Gates only allow execution through if the top of the stack is:
+        True for [, the open gate
+        False for ], the closed gate
+    If the condition fails, the gate reverses the pointer
+    Conditional Skip skips next instruction if the top of the stack is false
+    Math and Boolean operations pop the last two tokens and push the result
+    String literals are concatenated if the last token was also a string literal
+    Set value pops two tokens, sets the first to the second
+    Both Set and Get character are relative to the current code block
+    Set character pops the last three tokens, and sets the position (1,2) = 3
+    Get character pops the last three tokens, and gets the position (1,2)
+
+List of Operators:
+
+Flow Control:
+    Set direction: <>^v
+    Conditional Gates: []
+    Reverse pointer direction: :
+    Skip next instruction: ;
+    Skip next instruction conditionally: ?
+
+Actions:
+    Comparison: #
+    Math operators: +-*/%
+    Boolean Operators: !&|~
+    String literal begin: "
+    Set value: =
+    Sub-object access: .
+    Call Operator: (
+
+Reflection:
+    Get Stacksize: `
+    Stringize Top: '
+    Tokenize Top: \
+    Pop Stack: ,
+    Set Character: @
+    Get Character: $
+
+Builtins [Maybe make these like, {} or ()]:
+    read - Read next N characters into a string
+    write - Write top of stack to output
+
+Unused: {}
+
+Parsing Notes:
+
+    First, all blocks are parsed
+        Anything that looks like a block (Parser sees /-) but isn't becomes a syntax warning
+        Any valid block that is missing a name is a Syntax error
+        Any valid block that has an invalid name prefix character is a Syntax error
+    After blocks are parsed, functions are evaluated
+        If after function construction there is not `main` function, Syntax error
+    After blocks are resolved, types are evaluated recursively
+        Their second section is evaluated as a file of its own, but then names added to the type
+    After parsing of types, externs are resolved
+        Run parser recursively through path looking for matching library then evaluating it, then its namespace is added to the libname object
+    After externs are resolved, main begins execution
