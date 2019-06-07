@@ -1,4 +1,4 @@
 
-import interpreters.blockfunge.blockfunge as bf
+import blockfunge.blockfunge as bf
 
 bf.main()

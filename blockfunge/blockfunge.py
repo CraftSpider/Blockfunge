@@ -4,7 +4,7 @@ from . import interpreter as interp
 
 
 def main():
-    name = "blockfunge/test.hd"  # input("Filename: ")
+    name = "blockfunge/test.blf"  # input("Filename: ")
     with open(name) as file:
         blocks = parse.parse_file(file, True)
     main = interp.Module(*blocks)
