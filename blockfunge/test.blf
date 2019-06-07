@@ -16,9 +16,9 @@
          v                | var1=    var2  v   |
     /-----------\         |         3rav   <   |
     |1 2 v      |         |--------------------|
-    |    > add( |         | getVar1    meth2   |
-    |           |         |    v         v     |
-    |           |         | /-----\   /-------\|
+    |    ;      |         | getVar1    meth2   |
+    |    > add( |         |    v         v     |
+    |    :      |         | /-----\   /-------\|
     |           |         | |var1 |   |       ||
     \-----------/         | \-----/   |       ||
                           |           \-------/|
@@ -91,7 +91,7 @@ Builtins [Maybe make these like, {} or ()]:
     read - Read next N characters into a string
     write - Write top of stack to output
 
-Unused: {}
+Unused: ){}
 
 Parsing Notes:
 

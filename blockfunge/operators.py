@@ -1,13 +1,15 @@
 
-from .enums import Direction
+from .enums import Direction, TokenType
+from .token import Token, make_token
 import inspect
 
 
-# TODO: Remaining operators
+def pop_token(frame):
+    return frame.stack.pop()
 
 
-def eval_token(token):
-    pass
+def pop_value(frame):
+    return frame.eval_token(frame.stack.pop())
 
 
 def up_arrow():
@@ -27,8 +29,7 @@ def right_arrow():
 
 
 def open_gate(frame):
-    top = frame.stack.pop()
-    result = frame.eval_token(top)
+    result = pop_value(frame)
     if result is True:
         return frame.direction
     else:
@@ -36,8 +37,7 @@ def open_gate(frame):
 
 
 def close_gate(frame):
-    top = frame.stack.pop()
-    result = frame.eval_token(top)
+    result = pop_value(frame)
     if result is True:
         return frame.direction.reverse()
     else:
@@ -48,6 +48,18 @@ def reverse(frame):
     return frame.direction.reverse()
 
 
+def skip(frame):
+    frame._shift_pointer()
+    return frame.direction
+
+
+def skip_cond(frame):
+    a = pop_value(frame)
+    if a:
+        frame._shift_pointer()
+    return frame.direction
+
+
 FLOW_CONTROL = {
     '^': up_arrow,
     'v': down_arrow,
@@ -55,40 +67,92 @@ FLOW_CONTROL = {
     '>': right_arrow,
     '[': open_gate,
     ']': close_gate,
-    ':': reverse
+    ':': reverse,
+    ';': skip,
+    '?': skip_cond
 }
 
 
 def add(frame):
-    a = frame.stack.pop()
-    b = frame.stack.pop()
-    return frame.eval_token(a) + frame.eval_token(b)
+    a = pop_value(frame)
+    b = pop_value(frame)
+    return a + b
 
 
 def subtract(frame):
-    a = frame.stack.pop()
-    b = frame.stack.pop()
-    return frame.eval_token(a) - frame.eval_token(b)
+    a = pop_value(frame)
+    b = pop_value(frame)
+    return a - b
 
 
 def multiply(frame):
-    a = frame.stack.pop()
-    b = frame.stack.pop()
-    return frame.eval_token(a) * frame.eval_token(b)
+    a = pop_value(frame)
+    b = pop_value(frame)
+    return a * b
 
 
 def divide(frame):
-    a = frame.stack.pop()
-    b = frame.stack.pop()
-    return frame.eval_token(a) / frame.eval_token(b)
+    a = pop_value(frame)
+    b = pop_value(frame)
+    return a / b
+
+
+def modulo(frame):
+    a = pop_value(frame)
+    b = pop_value(frame)
+    return a % b
+
+
+def bool_not(frame):
+    a = pop_value(frame)
+    return not a
+
+
+def bool_and(frame):
+    a = pop_value(frame)
+    b = pop_value(frame)
+    return a and b
+
+
+def bool_or(frame):
+    a = pop_value(frame)
+    b = pop_value(frame)
+    return a or b
+
+
+def bool_xor(frame):
+    a = pop_value(frame)
+    b = pop_value(frame)
+    return a ^ b
+
+
+def compare(frame):
+    a = pop_value(frame)
+    b = pop_value(frame)
+    return a == b
+
+
+def set_var(frame):
+    tok = pop_token(frame)
+    val = pop_value(frame)
+    frame.set_token(tok, val)
+
+
+def sub_obj(frame):
+    from .interpreter import Module, Instance
+    val = pop_value(frame)
+    tok = pop_token(frame)
+    if not isinstance(val, (Module, Instance)):
+        print("Cannot get sub-object of literal value")
+    return tok.eval_token(tok)
 
 
 def call(frame):
-    func = frame.eval_token(frame.stack.pop())
+    func = pop_value(frame)
     num_args = func.arguments
     args = []
     for arg in range(num_args):
-        args.append(frame.eval_token(frame.stack.pop()))
+        args.append(pop_value(frame))
     return func.invoke(*args)
 
 
@@ -97,11 +161,56 @@ ACTIONS = {
     '-': subtract,
     '*': multiply,
     '/': divide,
+    '%': modulo,
+    '!': bool_not,
+    '&': bool_and,
+    '|': bool_or,
+    '~': bool_xor,
+    '#': compare,
+    '=': set_var,
+    '.': sub_obj,
     '(': call
 }
 
-REFLECTION = {
 
+def stacksize(frame):
+    return len(frame.stack)
+
+
+def stringize(frame):
+    token = pop_token(frame)
+    return str(token)
+
+
+def tokenize(frame):
+    val = pop_value(frame)
+    return Token(TokenType.VAR, str(val))
+
+
+def pop(frame):
+    frame.stack.pop()
+
+
+def get_char(frame):
+    a = pop_value(frame)
+    b = pop_value(frame)
+    return frame.func.graph[a, b]
+
+
+def set_char(frame):
+    a = pop_value(frame)
+    b = pop_value(frame)
+    c = pop_value(frame)
+    frame.func.graph[a, b] = c
+
+
+REFLECTION = {
+    '`': stacksize,
+    '\'': stringize,
+    '\\': tokenize,
+    ',': pop,
+    '@': get_char,
+    '$': set_char
 }
 
 
@@ -114,6 +223,9 @@ def invoke_operator(op, frame):
     func = ALL_OPS[op]
     sig = inspect.signature(func)
     if len(sig.parameters) > 0:
-        return func(frame)
+        out = func(frame)
     else:
-        return func()
+        out = func()
+    if out is not None and not isinstance(out, Direction):
+        return make_token(out)
+    return out

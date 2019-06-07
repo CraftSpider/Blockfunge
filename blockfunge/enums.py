@@ -3,13 +3,13 @@ import enum
 
 
 class Direction(enum.Enum):
-    UP = enum.auto()
-    DOWN = enum.auto()
-    LEFT = enum.auto()
-    RIGHT = enum.auto()
+    UP = 0
+    RIGHT = 1
+    DOWN = 2
+    LEFT = 3
 
     def reverse(self):
-        return self[self.value() + 2 % 4]
+        return Direction((self.value + 2) % 4)
 
 
 class BlockType(enum.Enum):

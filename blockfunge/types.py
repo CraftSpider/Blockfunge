@@ -1,4 +1,6 @@
 
+from .token import make_token
+
 
 class Graph:
 
@@ -71,7 +73,7 @@ class Function(Block):
         super().__init__(name, code)
 
     def invoke(self, *args):
-        from .interpreter import Frame, make_token
+        from .interpreter import Frame
         tokens = []
         for arg in args:
             tokens.append(make_token(arg))
@@ -87,16 +89,4 @@ class Type(Block):  # TODO: Implement types
 
 class Extern(Block):  # TODO: Implement externs
     pass
-
-
-class Token:
-
-    __slots__ = ("type", "value")
-
-    def __init__(self, type, value):
-        self.type = type
-        self.value = value
-
-    def __str__(self):
-        return str(self.value)
 

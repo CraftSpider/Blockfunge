@@ -2,20 +2,10 @@
 
 from . import operators
 from .enums import TokenType, Direction
-from .types import Token
+from .token import Token
 
 
-def make_token(arg):
-    if isinstance(arg, Token):
-        return arg
-    elif isinstance(arg, (int, float)):
-        return Token(TokenType.NUM, arg)
-    elif isinstance(arg, str):
-        return Token(TokenType.STRING, arg)
-    else:
-        return Token(TokenType.REF, arg)
-
-
+# A file or other module
 class Module:
 
     def __init__(self, funcs, types, externs):
@@ -49,8 +39,9 @@ class Module:
         return result
 
 
+# A currently running function
 class Frame:
-    __slots__ = ("func", "stack", "ptr", "direction", "register", "locals")
+    __slots__ = ("func", "stack", "ptr", "direction", "register", "locals", "_running")
 
     def __init__(self, func, args):
         self.func = func
@@ -59,14 +50,23 @@ class Frame:
         self.ptr = [0, 0]
         self.direction = Direction.RIGHT
         self.locals = {}
+        self._running = False
 
     def eval_token(self, token):
         if token.type == TokenType.NUM:
             return int(token.value)
+        elif token.type == TokenType.STRING:
+            return str(token.value)
         elif str(token) in self.locals:
             return self.locals[str(token)]
         else:
             return self.func.module.eval_token(token)
+
+    def set_token(self, token, value):
+        if token.type != TokenType.VAR:
+            print("Attempt to set a non-variable token")
+            exit(1)
+        self.locals[str(token.value)] = value
 
     def _shift_pointer(self):
         if self.direction == Direction.RIGHT:
@@ -89,29 +89,49 @@ class Frame:
         self.register = ""
 
     def run(self):
+        if self._running:
+            print("Frame run invoked more than once")
+            exit(1)
+        self._running = True
+
+        string_mode = False
 
         while self.func.graph.is_within(self.ptr):
             char = self.func.graph[self.ptr]
 
-            if char in operators.FLOW_CONTROL:
-                if self.register != "":
-                    self._push()
-                self.direction = operators.invoke_operator(char, self)
-            elif char in operators.ACTIONS:
+            result = None
+            if string_mode:
+                if char == '"':
+                    self.stack.append(Token(TokenType.STRING, self.register))
+                    self.register = False
+                    string_mode = False
+                else:
+                    self.register += char
+            elif char in operators.FLOW_CONTROL:
+                result = operators.invoke_operator(char, self)
+            elif char in operators.ACTIONS or char in operators.REFLECTION:
                 self._push()
                 result = operators.invoke_operator(char, self)
-                if result is not None:
-                    self.stack.append(make_token(result))
             elif char == '"':
-                pass
-                # TODO: String mode
+                string_mode = True
             elif char == ' ':
                 self._push()
             else:
                 self.register += char
+
+            if result is not None:
+                if isinstance(result, Token):
+                    self.stack.append(result)
+                elif isinstance(result, Direction):
+                    self.direction = result
 
             self._shift_pointer()
 
         if len(self.stack):
             return self.stack.pop()
         return None
+
+
+# An instance of a type
+class Instance:
+    pass
