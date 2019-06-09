@@ -41,7 +41,7 @@ def read_block(arr, top, left):
     right = left+1
     bottom = top+1
     while not end:
-        char = arr[top][right]
+        char = arr[top, right]
         if char == '\\':
             end = True
         elif char != '-':
@@ -145,25 +145,35 @@ def parse_functions(graph, blocks):
     for block in blocks:
         if block.type == BlockType.FUNCTION:
             pos = block.block
-            func_graph = types.Graph(pos[2] - pos[0] - 1, pos[3] - pos[1] - 1)
-
-            for i in range(pos[0]+1, pos[2]):
-                line = ""
-                for j in range(pos[1]+1, pos[3]):
-                    line += graph[i, j]
-                func_graph.append(line)
-
+            pos = (pos[0] + 1, pos[1] + 1, pos[2], pos[3])
+            func_graph = graph.get_subgraph(*pos)
             func = types.Function(block.name, func_graph)
             out[func.name] = func
     return out
 
 
 def parse_classes(graph, blocks):
-    return {}
+    out = {}
+    for block in blocks:
+        if block.type == BlockType.CLASS:
+            pos = block.block
+            pos = (pos[0] + 1, pos[1] + 1, pos[2], pos[3])
+            type_graph = graph.get_subgraph(*pos)
+            type = types.Type(block.name, type_graph)
+            out[type.name] = type
+    return out
 
 
 def parse_externs(graph, blocks):
-    return {}
+    out = {}
+    for block in blocks:
+        if block.type == BlockType.EXTERN:
+            pos = block.block
+            pos = (pos[0] + 1, pos[1] + 1, pos[2], pos[3])
+            ext_graph = graph.get_subgraph(*pos)
+            ext = types.Extern(block.name, ext_graph)
+            out[ext.name] = ext
+    return out
 
 
 def parse_graph(graph):

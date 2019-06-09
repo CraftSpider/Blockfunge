@@ -47,6 +47,15 @@ class Graph:
             self.height += 1
         self.buffer.append(line)
 
+    def get_subgraph(self, top, left, bottom, right):
+        graph = Graph(bottom - top - 1, right - left - 1)
+        for i in range(top, bottom):
+            line = ""
+            for j in range(left, right):
+                line += self[i, j]
+            graph.append(line)
+        return graph
+
 
 class Block:
 
@@ -62,7 +71,7 @@ class Block:
         self.graph = graph
 
     def __repr__(self):
-        return f"Block(name={self.name}, arguments={self.arguments}, graph={self.graph})"
+        return f"{self.__class__.__name__}(name={self.name}, arguments={self.arguments}, graph={self.graph})"
 
 
 class Function(Block):
@@ -72,21 +81,57 @@ class Function(Block):
     def __init__(self, name, code):
         super().__init__(name, code)
 
-    def invoke(self, *args):
+    def make_frame(self, *args):
         from .interpreter import Frame
         tokens = []
         for arg in args:
             tokens.append(make_token(arg))
+        return Frame(self, tokens)
+
+    def invoke(self, *args):
+        from .interpreter import GlobalState
         print(f"Invoking {self.name}")
-        frame = Frame(self, tokens)
-        return self.module.add_frame(frame)
+        frame = self.make_frame(*args)
+        return GlobalState.run_frame(frame)
+
+
+def _find_bar(graph):
+    for i in range(graph.height):
+        if graph[i, 0] == '-':
+            for j in range(graph.width):
+                if graph[i, j] != '-':
+                    break
+            else:
+                return i
+    return None
 
 
 class Type(Block):  # TODO: Implement types
 
-    __slots__ = ("methods",)
+    __slots__ = ("methods", "constructor")
+
+    def __init__(self, name, code):
+        from .parse import parse_graph
+        super().__init__(name, code)
+        self.methods = []
+        self.constructor = None
+
+        height = _find_bar(self.graph)
+        const = self.graph.get_subgraph(0, 0, height, self.graph.width)
+        rest = self.graph.get_subgraph(height+1, 0, self.graph.height, self.graph.width)
+
+        self.constructor = Function(f"{self.name}_constructor", const)
+        self.constructor.arguments = self.arguments
+        self.methods, _, _ = parse_graph(rest)
+
+    def invoke(self, *args):
+        from .interpreter import GlobalState, Instance
+        frame = self.constructor.make_frame(*args)
+        stack = GlobalState.run_stack_frame(frame)
+        return Instance(self, stack)
 
 
 class Extern(Block):  # TODO: Implement externs
-    pass
+
+    __slots__ = ()
 

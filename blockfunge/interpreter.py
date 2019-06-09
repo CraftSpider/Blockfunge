@@ -5,6 +5,25 @@ from .enums import TokenType, Direction
 from .token import Token
 
 
+# The global interpreter state
+class GlobalState:
+
+    frames = []
+
+    @classmethod
+    def run_frame(cls, frame):
+        cls.frames.append(frame)
+        result = frame.run()
+        cls.frames.pop()
+        return result
+
+    @classmethod
+    def run_stack_frame(cls, frame):
+        cls.frames.append(frame)
+        frame.run()
+        return frame.stack
+
+
 # A file or other module
 class Module:
 
@@ -31,12 +50,6 @@ class Module:
 
     def run(self):
         print(self.funcs["main"].invoke())
-
-    def add_frame(self, frame):
-        self.frames.append(frame)
-        result = frame.run()
-        self.frames.pop()
-        return result
 
 
 # A currently running function
@@ -128,10 +141,14 @@ class Frame:
             self._shift_pointer()
 
         if len(self.stack):
-            return self.stack.pop()
+            return self.stack[-1]
         return None
 
 
 # An instance of a type
 class Instance:
-    pass
+
+    __slots__ = ("type", "dict")
+
+    def __init__(self, type, stack):
+        pass
